@@ -232,6 +232,8 @@
             let complexityApiData = []; // Para datos reales del gráfico
             let qaPerformanceChartInstance = null;
             const qaDisplayNames = ['Astrid', 'Adrian', 'Percy', 'Diana', 'Leonardo', 'Witerman', 'Marilyn', 'Yesenia'];
+            // Lista específica para el gráfico de rendimiento: excluir Astrid y Yesenia
+            const qaChartNames = qaDisplayNames.filter(n => n !== 'Astrid' && n !== 'Yesenia');
 
             const formatApiName = (apiIdentifier) => {
                 if (!apiIdentifier) return 'Desconocido';
@@ -711,7 +713,7 @@
             // Acepta datos de complejidad (apiComplexityData) o usa mockData (si es null)
             function updateQaPerformanceChart(apiComplexityData) {
                 let complexitySums = [];
-                let currentQaNames = qaDisplayNames;
+                let currentQaNames = qaChartNames;
 
                 if (apiComplexityData && apiComplexityData.length > 0) {
                     console.log("Usando datos de complejidad de la API para el gráfico:", apiComplexityData);
@@ -719,7 +721,7 @@
                     apiComplexityData.forEach(item => {
                         const apiIdentifier = item.owner || item.modified_by || item.asignado_qa;
                         const displayName = formatApiName(apiIdentifier);
-                        if (displayName !== 'Desconocido' && qaDisplayNames.includes(displayName)) {
+                        if (displayName !== 'Desconocido' && qaChartNames.includes(displayName)) {
                             // Asegurar que el valor sea numérico (la API puede devolver strings)
                             const rawVal = item.suma_complejidad ?? item.total_complejidad_hoy ?? 0;
                             const complexityValue = Number(rawVal) || 0;
@@ -728,7 +730,7 @@
                             console.warn("Identificador de QA no reconocido o no está en qaDisplayNames:", apiIdentifier, displayName);
                         }
                     });
-                    complexitySums = qaDisplayNames.map(name => apiComplexityMap.get(name) || 0);
+                    complexitySums = qaChartNames.map(name => apiComplexityMap.get(name) || 0);
                     // Mostrar canvas y ocultar placeholder
                     const noDataEl = document.getElementById('qa-no-data');
                     const canvasEl = document.getElementById('qaPerformanceChart');
