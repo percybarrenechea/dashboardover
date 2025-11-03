@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Tareas ERP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827;
+            color: #d1d5db;
+        }
+
+        .card {
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 0.75rem;
+        }
+
+        .table-header {
+            background-color: #374151;
+        }
+
+        .table-row:nth-child(even) {
+            background-color: #1f2937;
+        }
+
+        .table-row:nth-child(odd) {
+            background-color: #263142;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        /* Estilos para Modals */
+        .modal-backdrop {
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-panel {
+            transition: all 0.3s ease;
+        }
+
+        /* Estilos para Pestañas de Navegación */
+        .nav-btn {
+            border-bottom: 2px solid transparent;
+        }
+
+        .nav-btn.active {
+            border-bottom-color: #3b82f6;
+            /* blue-500 */
+            color: #ffffff;
+        }
+
+        /* Estilos para Kanban */
+        .kanban-column {
+            min-width: 300px;
+            max-width: 350px;
+            height: calc(100vh - 150px);
+        }
+
+        .kanban-tasks {
+            height: calc(100% - 40px);
+        }
+    </style>
+</head>
+
+<body class="p-4">
+    <div class="mx-auto">
+        <header class="mb-6">
+            <div class="flex justify-center border-b border-gray-700">
+                <nav class="flex space-x-8">
+                    <button id="nav-dashboard"
+                        class="nav-btn active py-4 px-1 text-sm font-medium text-gray-400 hover:text-white">DASHBOARD</button>
+                    <button id="nav-incident-tracking"
+                        class="nav-btn py-4 px-1 text-sm font-medium text-gray-400 hover:text-white">SEGUIMIENTO DE
+                        INCIDENCIAS</button>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Contenedor de la Vista Dashboard -->
+        <div id="dashboard-view">
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                <div class="xl:col-span-1 card p-5 flex flex-col h-[85vh] xl:h-auto">
+                    <div class="flex items-center gap-3 mb-4 flex-shrink-0">
+                        <i data-lucide="flask-conical" class="w-6 h-6 text-cyan-400"></i>
+                        <h2 class="text-lg font-semibold text-white">Seguimiento Activo</h2>
+                    </div>
+                    <div id="active-tasks-error" class="hidden text-center py-10 text-red-400">
+                        <i data-lucide="alert-triangle" class="mx-auto w-10 h-10 mb-2"></i>
+                        <p>Error al cargar tareas activas.</p>
+                        <p id="active-tasks-error-details" class="text-xs text-gray-500"></p>
+                    </div>
+                    <div id="en-qa-tasks-list" class="space-y-4 overflow-y-auto flex-grow"></div>
+                </div>
+                <div class="xl:col-span-2 flex flex-col gap-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+                        <div class="card p-5 flex flex-col min-h-[180px]">
+                            <div class="flex items-center mb-3 flex-shrink-0 justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <i data-lucide="loader-2" class="w-5 h-5 text-yellow-400 mr-2"></i>
+                                        <h3 class="font-semibold text-white">Pend. Revisión</h3>
+                                    </div>
+                                    <span id="kpi-count-pending" class="text-sm text-gray-400"></span>
+                                </div>
+                            <div id="kpi-list-pending" class="space-y-2 overflow-y-auto"></div>
+                        </div>
+                        <div class="card p-5 flex flex-col min-h-[180px]">
+                            <div class="flex items-center mb-3 flex-shrink-0 justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <i data-lucide="beaker" class="w-5 h-5 text-blue-400 mr-2"></i>
+                                        <h3 class="font-semibold text-white">En QA</h3>
+                                    </div>
+                                    <span id="kpi-count-en-qa" class="text-sm text-gray-400"></span>
+                                </div>
+                            <div id="kpi-list-en-qa" class="space-y-2 overflow-y-auto"></div>
+                        </div>
+                        <div class="card p-5 flex flex-col min-h-[180px]">
+                            <div class="flex items-center mb-3 flex-shrink-0 justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <i data-lucide="copy-check" class="w-5 h-5 text-purple-400 mr-2"></i>
+                                        <h3 class="font-semibold text-white">Subido a Copia</h3>
+                                    </div>
+                                    <span id="kpi-count-subido-copia" class="text-sm text-gray-400"></span>
+                                </div>
+                            <div id="kpi-list-subido-copia" class="space-y-2 overflow-y-auto"></div>
+                        </div>
+                        <div class="card p-5 flex flex-col min-h-[180px]">
+                            <div class="flex items-center mb-3 flex-shrink-0 justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <i data-lucide="cloud-cog" class="w-5 h-5 text-teal-400 mr-2"></i>
+                                        <h3 class="font-semibold text-white">Cambios Subidos</h3>
+                                    </div>
+                                    <span id="kpi-count-cambios-subidos" class="text-sm text-gray-400"></span>
+                                </div>
+                            <div id="kpi-list-cambios-subidos" class="space-y-2 overflow-y-auto"></div>
+                        </div>
+                    </div>
+
+                    <div class="card p-5">
+                        <h2 class="text-lg font-semibold text-white mb-4">Rendimiento de QA</h2>
+                        <div id="qaPerformanceWrapper" class="h-64 sm:h-80 relative">
+                            <canvas id="qaPerformanceChart" class="w-full h-full"></canvas>
+                            <div id="qa-no-data"
+                                class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm bg-transparent hidden">
+                                No hay datos de complejidad.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenedor para la Vista Seguimiento de Incidencias (Kanban) -->
+        <div id="incident-tracking-view" class="hidden">
+            <div id="kanban-board" class="flex space-x-6 overflow-x-auto pb-4">
+                {/* Las columnas Kanban se generarán aquí */}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal de Asignación -->
+    <div id="assignment-modal" class="relative z-20 hidden" aria-labelledby="modal-title" role="dialog"
+        aria-modal="true">
+        <div id="assignment-modal-backdrop" class="fixed inset-0 bg-gray-900 bg-opacity-75 modal-backdrop"></div>
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-center justify-center p-4 text-center">
+                <div id="assignment-modal-panel"
+                    class="relative transform overflow-hidden rounded-lg bg-gray-800 text-left shadow-xl w-full max-w-md modal-panel">
+                    <div class="bg-gray-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div
+                                class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-500/20 sm:mx-0 sm:h-10 sm:w-10">
+                                <i data-lucide="user-plus" class="h-6 w-6 text-blue-400"></i>
+                            </div>
+                            <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                                <h3 class="text-base font-semibold leading-6 text-white" id="modal-title">Asignar Tarea
+                                </h3>
+                                <div class="mt-2">
+                                    <p class="text-sm text-gray-400">Seleccione un miembro del equipo para la tarea
+                                        <strong id="modal-task-id" class="text-white"></strong>.</p>
+                                    <select id="qa-selector"
+                                        class="mt-4 w-full bg-gray-900 border border-gray-600 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"></select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-700/50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                        <button type="button" id="assign-button"
+                            class="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 sm:ml-3 sm:w-auto">Asignar</button>
+                        <button type="button"
+                            class="close-modal-button mt-3 inline-flex w-full justify-center rounded-md bg-gray-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-500 sm:mt-0 sm:w-auto">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let allTasks = []; // Para mockData (Kanban y fallback)
+            let activeApiTasks = []; // Para datos reales del panel izquierdo
+            let kpiApiTasks = []; // Para datos reales de los KPIs superiores
+            let complexityApiData = []; // Para datos reales del gráfico
+            let qaPerformanceChartInstance = null;
+            const qaDisplayNames = ['Astrid', 'Adrian', 'Percy', 'Diana', 'Leonardo', 'Witerman', 'Marilyn', 'Yesenia'];
+
+            const formatApiName = (apiIdentifier) => {
+                if (!apiIdentifier) return 'Desconocido';
+                const lowerApiIdentifier = apiIdentifier.toLowerCase();
+                for (const [display, apiEmail] of apiNameMap.entries()) {
+                    if (apiEmail.toLowerCase() === lowerApiIdentifier) return display;
+                }
+                if (lowerApiIdentifier.includes('@')) return lowerApiIdentifier.split('@')[0].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                return lowerApiIdentifier.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            };
+            const apiNameMap = new Map([
+                ['Astrid', 'astridna@overskull.pe'],
+                ['Adrian', 'adriansaavedra@larael.com'],
+                ['Percy', 'percybarrenechea@larael.com'],
+                ['Diana', 'dianaquispe@larael.com'],
+                ['Leonardo', 'leonardosalazar@larael.com'],
+                ['Witerman', 'witermanbravo@larael.com'],
+                ['Marilyn', 'marilynmq@overskull.pe'],
+                ['Yesenia', 'yeseniaraqui@overskull.com']
+            ]);
+
+            const statusColors = {
+                'Abrir/Abierto': { bg: 'bg-gray-500/20', text: 'text-gray-400' },
+                'Trabajando': { bg: 'bg-indigo-500/20', text: 'text-indigo-400' },
+                'Pendiente de revisar': { bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
+                'En QA': { bg: 'bg-blue-500/20', text: 'text-blue-400' },
+                'Aprobado para Subir': { bg: 'bg-lime-500/20', text: 'text-lime-400' },
+                'Pendiente de Pull': { bg: 'bg-pink-500/20', text: 'text-pink-400' },
+                'Subido a copia': { bg: 'bg-purple-500/20', text: 'text-purple-400' },
+                'Cambios Subidos': { bg: 'bg-teal-500/20', text: 'text-teal-400' },
+                'Aprobado': { bg: 'bg-green-500/20', text: 'text-green-400' },
+                'Revisando': { bg: 'bg-orange-500/20', text: 'text-orange-400' },
+                'Pending Review': { bg: 'bg-yellow-500/20', text: 'text-yellow-400', dot: 'bg-yellow-400' },
+                'Working': { bg: 'bg-blue-500/20', text: 'text-blue-400', dot: 'bg-blue-400' },
+                'Subido a Copia': { bg: 'bg-purple-500/20', text: 'text-purple-400', dot: 'bg-purple-400' },
+                'To Do': { bg: 'bg-gray-500/20', text: 'text-gray-400', dot: 'bg-gray-400' },
+                'default': { bg: 'bg-gray-700/50', text: 'text-gray-300' }
+            };
+
+            const priorityStyles = {
+                // Spanish keys
+                'urgente': { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500' },
+                'alto': { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500' },
+                'medio': { bg: 'bg-yellow-500/20', text: 'text-yellow-400', border: 'border-yellow-500' },
+                'bajo': { bg: 'bg-gray-500/20', text: 'text-gray-400', border: 'border-gray-500' },
+                // English synonyms map to same styles
+                'urgent': { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500' },
+                'high': { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500' },
+                'medium': { bg: 'bg-yellow-500/20', text: 'text-yellow-400', border: 'border-yellow-500' },
+                'low': { bg: 'bg-gray-500/20', text: 'text-gray-400', border: 'border-gray-500' },
+                'default': { bg: 'bg-gray-500/20', text: 'text-gray-400', border: 'border-gray-500' }
+            };
+
+            // Mapa para mostrar la etiqueta de prioridad en español
+            const priorityDisplayMap = {
+                'urgent': 'Urgente', 'urgente': 'Urgente',
+                'high': 'Alto', 'alto': 'Alto',
+                'medium': 'Medio', 'medio': 'Medio',
+                'low': 'Bajo', 'bajo': 'Bajo'
+            };
+
+            // Normaliza un valor de prioridad (viene en inglés o español) a la clave usada por priorityStyles
+            function normalizePriority(raw) {
+                if (!raw) return 'medio';
+                const s = String(raw).trim().toLowerCase();
+                if (['urgent', 'urgente'].includes(s)) return 'urgente';
+                if (['high', 'alto'].includes(s)) return 'alto';
+                if (['medium', 'medio'].includes(s)) return 'medio';
+                if (['low', 'bajo'].includes(s)) return 'bajo';
+                return 'medio';
+            }
+
+            // mockData se usa como fallback y para la vista Kanban
+            const mockData = [
+                { id: 'QA-2025-05129', asunto: 'Links de postulación', estado: 'En QA', identificador: 'TASK-2025-03526', asignado_qa: 'Leonardo', complejidad: '3', prioridad: 'urgente' },
+                { id: 'QA-2025-05136', asunto: 'Testear flujo de compra', estado: 'Pendiente de revisar', identificador: 'TASK-2025-03533', asignado_qa: 'Diana', complejidad: '4', prioridad: 'alto' },
+                { id: 'QA-2025-05134', asunto: 'Optimizar consulta DB', estado: 'Trabajando', identificador: 'TASK-2025-03531', asignado_qa: 'Javier', complejidad: '5', prioridad: 'alto' },
+                { id: 'QA-2025-05143', asunto: 'Revisar despliegue en servidor', estado: 'Subido a copia', identificador: 'TASK-2025-03540', asignado_qa: 'Percy', complejidad: '3', prioridad: 'medio' },
+                { id: 'QA-2025-05138', asunto: 'Ajuste de estilos en CSS', estado: 'En QA', identificador: 'TASK-2025-03535', asignado_qa: 'Yesenia', complejidad: '1', prioridad: 'bajo' },
+                { id: 'QA-2025-05144', asunto: 'Verificar cambios en prod', estado: 'Cambios Subidos', identificador: 'TASK-2025-03541', asignado_qa: 'Adrian', complejidad: '2', prioridad: 'medio' },
+                { id: 'QA-2025-05141', asunto: 'Revisar logs del servidor', estado: 'En QA', identificador: 'TASK-2025-03538', asignado_qa: 'Astrid', complejidad: '4', prioridad: 'urgente' },
+                { id: 'QA-2025-05131', asunto: 'Desplegar nueva App v2', estado: 'Pendiente de revisar', identificador: 'TASK-2025-03528', asignado_qa: 'Marilyn', complejidad: '2', prioridad: 'medio' },
+                { id: 'QA-2025-05132', asunto: 'Actualizar docs técnicas', estado: 'Abrir/Abierto', identificador: 'TASK-2025-03529', asignado_qa: 'Yesenia', complejidad: '1', prioridad: 'bajo' },
+                { id: 'QA-2025-05133', asunto: 'Revisión seguridad login', estado: 'Aprobado para Subir', identificador: 'TASK-2025-03530', asignado_qa: 'Astrid', complejidad: '4', prioridad: 'alto' },
+                { id: 'QA-2025-05137', asunto: 'Nuevo diseño de perfil', estado: 'Aprobado para Subir', identificador: 'TASK-2025-03534', asignado_qa: 'Marilyn', complejidad: '2', prioridad: 'medio' },
+                { id: 'QA-2025-05140', asunto: 'Configurar vars entorno', estado: 'Abrir/Abierto', identificador: 'TASK-2025-03537', asignado_qa: 'Astrid', complejidad: '3', prioridad: 'medio' },
+                { id: 'QA-2025-05145', asunto: 'Corregir error 404', estado: 'En QA', identificador: 'TASK-2025-03542', asignado_qa: 'Witerman', complejidad: '2', prioridad: 'medio' },
+                { id: 'QA-2025-05146', asunto: 'Merge de rama feature-xyz', estado: 'Pendiente de Pull', identificador: 'TASK-2025-03543', asignado_qa: 'Leonardo', complejidad: '1', prioridad: 'bajo' },
+                { id: 'QA-2025-05147', asunto: 'Crear script de migración', estado: 'Trabajando', identificador: 'TASK-2025-03544', asignado_qa: 'Percy', complejidad: '4', prioridad: 'alto' },
+            ];
+
+
+            const assignmentModal = document.getElementById('assignment-modal');
+            const modalTaskId = document.getElementById('modal-task-id');
+            const qaSelector = document.getElementById('qa-selector');
+            let currentTaskToAssign = null;
+
+            function openAssignmentModal(taskId) {
+                currentTaskToAssign = taskId;
+                modalTaskId.textContent = taskId;
+                // Usar la fuente de datos correcta (kpiApiTasks si existe, sino mockData)
+                const sourceTasks = kpiApiTasks.length > 0 ? kpiApiTasks : allTasks;
+                const task = sourceTasks.find(t => (t.identificador || t.name) === taskId);
+                const assigneeName = task ? task.asignado_qa : '';
+                if ([...qaSelector.options].map(opt => opt.value).includes(assigneeName)) {
+                    qaSelector.value = assigneeName;
+                } else if (qaSelector.options.length > 0) {
+                    qaSelector.selectedIndex = 0;
+                }
+                assignmentModal.classList.remove('hidden');
+            }
+
+            function closeAssignmentModal() {
+                assignmentModal.classList.add('hidden');
+                currentTaskToAssign = null;
+            }
+
+            function populateQaSelector() {
+                qaSelector.innerHTML = '';
+                qaDisplayNames.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    qaSelector.appendChild(option);
+                });
+            }
+
+            document.getElementById('assign-button').addEventListener('click', () => {
+                if (currentTaskToAssign) {
+                    const newAssigneeDisplayName = qaSelector.value;
+                    console.log(`Simulando asignación de tarea ${currentTaskToAssign} a ${newAssigneeDisplayName}`);
+
+                    // Actualizar localmente para reflejar el cambio 
+                    const taskIndexAll = allTasks.findIndex(t => t.identificador === currentTaskToAssign);
+                    if (taskIndexAll !== -1) allTasks[taskIndexAll].asignado_qa = newAssigneeDisplayName;
+
+                    const taskIndexKpi = kpiApiTasks.findIndex(t => (t.identificador || t.name) === currentTaskToAssign);
+                    if (taskIndexKpi !== -1) kpiApiTasks[taskIndexKpi].asignado_qa = newAssigneeDisplayName;
+
+                    updateKPIsAsLists(kpiApiTasks.length > 0 ? kpiApiTasks : allTasks);
+                    updateIncidentTrackingView(allTasks);
+                    // Recalcular gráfico basado en la fuente de datos actual de complejidad
+                    updateQaPerformanceChart(complexityApiData.length > 0 ? complexityApiData : null);
+
+                    closeAssignmentModal();
+                }
+            });
+
+            document.querySelectorAll('.close-modal-button').forEach(btn => btn.addEventListener('click', closeAssignmentModal));
+            document.getElementById('assignment-modal-backdrop').addEventListener('click', closeAssignmentModal);
+
+            const navDashboard = document.getElementById('nav-dashboard');
+            const navIncidentTracking = document.getElementById('nav-incident-tracking');
+            const dashboardView = document.getElementById('dashboard-view');
+            const incidentTrackingView = document.getElementById('incident-tracking-view');
+
+            navDashboard.addEventListener('click', () => {
+                dashboardView.classList.remove('hidden');
+                incidentTrackingView.classList.add('hidden');
+                navDashboard.classList.add('active');
+                navIncidentTracking.classList.remove('active');
+            });
+
+            navIncidentTracking.addEventListener('click', () => {
+                incidentTrackingView.classList.remove('hidden');
+                dashboardView.classList.add('hidden');
+                navIncidentTracking.classList.add('active');
+                navDashboard.classList.remove('active');
+                updateIncidentTrackingView(allTasks);
+            });
+
+            function fetchApiData() {
+                const apiUrl = 'https://qawebservices.shalomcontrol.com/cloud/reportes/erp-overskull/percy';
+                const errorContainer = document.getElementById('active-tasks-error');
+                const errorDetails = document.getElementById('active-tasks-error-details');
+                errorContainer.classList.add('hidden');
+                errorDetails.textContent = '';
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', apiUrl, true);
+
+                xhr.onload = function () {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            const apiData = JSON.parse(xhr.responseText);
+                            console.log("Datos de API recibidos:", apiData);
+
+                            // Procesar 'data' para el panel izquierdo
+                            if (apiData && Array.isArray(apiData.data)) {
+                                activeApiTasks = apiData.data.map(item => ({
+                                    asunto: item.asunto || 'Sin asunto',
+                                    asignado_qa: formatApiName(item.asignado_qa),
+                                    complejidad: item.complejidad || 'N/A',
+                                    estado: item.estado || 'Desconocido'
+                                }));
+                                updateEnQAPanel(activeApiTasks);
+                            } else {
+                                console.warn("No se encontró 'data' o no es un array para Seguimiento Activo.");
+                                updateEnQAPanel([]);
+                            }
+
+                            // --- CAMBIO: Procesar 'lista_task_sistemas' como OBJETO para los KPIs ---
+                            if (apiData && typeof apiData.lista_task_sistemas === 'object' && apiData.lista_task_sistemas !== null) {
+                                kpiApiTasks = []; // Reiniciar la lista
+                                // Recorrer las claves del objeto (los estados)
+                                for (const status in apiData.lista_task_sistemas) {
+                                    if (Array.isArray(apiData.lista_task_sistemas[status])) {
+                                        // Mapear cada tarea dentro de la lista de ese estado
+                                        apiData.lista_task_sistemas[status].forEach(item => {
+                                            kpiApiTasks.push({
+                                                identificador: item.name || 'N/A',
+                                                // Usar el 'status' de la clave del objeto si no viene en el item
+                                                estado: item.status || status,
+                                                prioridad: item.priority ? item.priority.toLowerCase() : 'medio',
+                                                complejidad: item.complejidad || 'N/A',
+                                                asignado_qa: formatApiName(item.asignado_qa)
+                                            });
+                                        });
+                                    }
+                                }
+                                console.log("Tareas procesadas para KPIs:", kpiApiTasks);
+                                updateKPIsAsLists(kpiApiTasks); // Actualizar KPIs con los datos procesados de la API
+                            } else {
+                                console.warn("No se encontró 'lista_task_sistemas' o no es un objeto, usando mockData para KPIs.");
+                                updateKPIsAsLists(mockData);
+                            }
+
+
+                            // Procesar 'suma_complejidad_hoy' para el gráfico
+                            if (apiData && Array.isArray(apiData.suma_complejidad_hoy)) {
+                                complexityApiData = apiData.suma_complejidad_hoy;
+                                updateQaPerformanceChart(complexityApiData);
+                            } else {
+                                console.warn("No se encontraron datos de 'suma_complejidad_hoy' en la API, usando mockData para el gráfico.");
+                                updateQaPerformanceChart(null);
+                            }
+
+                            // --- NUEVO: Procesar lista de tareas por proyecto/estado (consulta 4) ---
+                            // Esperamos que el servicio devuelva un objeto 'lista_project_tasks' donde
+                            // cada clave es un estado y su valor un array de tareas.
+                            if (apiData && typeof apiData.lista_project_tasks === 'object' && apiData.lista_project_tasks !== null) {
+                                try {
+                                    const grouped = apiData.lista_project_tasks;
+                                    const flattened = [];
+                                    // Map de estados del servicio (inglés) a los estados en español para el dashboard
+                                    const statusMap = {
+                                        'Open': 'Abrir/Abierto',
+                                        'Working': 'Trabajando',
+                                        'Pending Review': 'Pendiente de revisar',
+                                        'En QA': 'En QA',
+                                        'Aprobado para Subir': 'Aprobado para Subir',
+                                        'Pendiente de Pull': 'Pendiente de Pull',
+                                        'Subido a copia': 'Subido a copia',
+                                        'Cambios Subidos': 'Cambios Subidos'
+                                    };
+                                    Object.keys(grouped).forEach(statusKey => {
+                                        const list = grouped[statusKey];
+                                        if (Array.isArray(list)) {
+                                            list.forEach(item => {
+                                                // item puede venir como objeto plano desde PHP
+                                                const t = item || {};
+                                                const estado = statusMap[statusKey] || statusKey;
+                                                flattened.push({
+                                                    estado: estado,
+                                                    identificador: t.name || t.nombre || t.task || '',
+                                                    asunto: t.subject || t.asunto || '',
+                                                    prioridad: (t.priority || t.prioridad || '').toLowerCase(),
+                                                    complejidad: t.complejidad || t.cantidad_de_pruebas_en_qa || 'N/A',
+                                                    asignado_qa: t.asignado_qa || t.department || '',
+                                                    project: t.project || '',
+                                                    exp_end_date: t.exp_end_date || '',
+                                                    cantidad_de_pruebas_en_preproduccion: t.cantidad_de_pruebas_en_preproduccion || 0,
+                                                    cantidad_de_pruebas_en_produccion: t.cantidad_de_pruebas_en_produccion || 0,
+                                                    cantidad_de_pruebas_en_qa: t.cantidad_de_pruebas_en_qa || 0,
+                                                });
+                                            });
+                                        }
+                                    });
+                                    // Usar estas tareas para la vista Kanban
+                                    allTasks = flattened;
+                                    updateIncidentTrackingView(allTasks);
+                                } catch (err) {
+                                    console.error('Error procesando lista_project_tasks:', err);
+                                    updateIncidentTrackingView(mockData);
+                                }
+                            } else {
+                                // Si no viene la lista de proyectos, usar mockData como antes
+                                updateIncidentTrackingView(allTasks.length ? allTasks : mockData);
+                            }
+
+                        } catch (parseError) {
+                            console.error("Error al parsear la respuesta JSON:", parseError);
+                            errorContainer.classList.remove('hidden');
+                            errorDetails.textContent = "Error al procesar respuesta de la API.";
+                            updateEnQAPanel([]);
+                            updateKPIsAsLists(mockData);
+                            updateQaPerformanceChart(null);
+                        }
+                    } else {
+                        console.error(`Falló la conexión. Causa: Error HTTP ${xhr.status}`);
+                        errorContainer.classList.remove('hidden');
+                        errorDetails.textContent = `Error HTTP ${xhr.status}. Verifique la URL o contacte al admin.`;
+                        updateEnQAPanel([]);
+                        updateKPIsAsLists(mockData);
+                        updateQaPerformanceChart(null);
+                    }
+                };
+
+                xhr.onerror = function () {
+                    console.error("Falló la conexión. Causa: Error de red o CORS.");
+                    errorContainer.classList.remove('hidden');
+                    errorDetails.textContent = "Error de red o CORS. Verifique la conexión o la configuración del servidor.";
+                    updateEnQAPanel([]);
+                    updateKPIsAsLists(mockData);
+                    updateQaPerformanceChart(null);
+                };
+
+                xhr.send();
+            }
+
+            function loadInitialData() {
+                populateQaSelector();
+                fetchApiData();
+                updateDashboard(mockData); // Carga inicial de mockData para Kanban
+            }
+
+            // Actualiza solo la vista Kanban (que usa mockData)
+            function updateDashboard(tasks) {
+                allTasks = tasks;
+                updateIncidentTrackingView(tasks);
+                updateTimestamp();
+                lucide.createIcons();
+            }
+
+            // Muestra los datos (reales o de error) en el panel izquierdo
+            function updateEnQAPanel(activeTasksData) {
+                const listContainer = document.getElementById('en-qa-tasks-list');
+                listContainer.innerHTML = '';
+
+                if (!Array.isArray(activeTasksData)) {
+                    console.error("updateEnQAPanel recibió datos que no son un array:", activeTasksData);
+                    activeTasksData = [];
+                }
+
+                if (activeTasksData.length === 0) {
+                    if (document.getElementById('active-tasks-error').classList.contains('hidden')) {
+                        listContainer.innerHTML = `<div class="text-center py-10 text-gray-400"><i data-lucide="check-circle" class="mx-auto w-10 h-10 mb-2"></i><p>No hay tareas en seguimiento activo.</p></div>`;
+                    }
+                } else {
+                    activeTasksData.forEach(task => {
+                        const complejidad = task.complejidad !== undefined && task.complejidad !== null ? task.complejidad : 'N/A';
+                        const asignado = task.asignado_qa || 'No asignado';
+
+                        const cardHtml = `
+                        <div class="p-4 rounded-lg bg-gray-700/50 border border-gray-600 hover:bg-gray-700 transition-colors">
+                            <p class="font-semibold text-white truncate" title="${task.asunto}">${task.asunto}</p>
+                            <div class="flex justify-between items-center mt-3 text-sm text-gray-400">
+                                <span class="flex items-center gap-2"><i data-lucide="user-circle-2" class="w-4 h-4"></i>${asignado}</span>
+                                <span class="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded-full text-xs font-medium">Complejidad: ${complejidad}</span>
+                            </div>
+                        </div>`;
+                        listContainer.innerHTML += cardHtml;
+                    });
+                }
+                lucide.createIcons();
+            }
+
+            // --- CAMBIO: Acepta la lista de tareas a usar (API o mockData) ---
+            function updateKPIsAsLists(tasksToDisplay) {
+                const kpiStatuses = {
+                    // Usar los nombres de estado exactos de la API (claves de lista_task_sistemas)
+                    'pending': 'Pending Review',
+                    'en-qa': 'En QA',
+                    'subido-copia': 'Subido a copia',
+                    'cambios-subidos': 'Cambios Subidos'
+                };
+                // Mapeo inverso (Estado API -> Clave Contenedor)
+                const statusToKeyMap = Object.entries(kpiStatuses).reduce((acc, [key, status]) => {
+                    acc[status] = key;
+                    return acc;
+                }, {});
+                // Añadir mapeos adicionales si son necesarios
+                statusToKeyMap['Working'] = 'en-qa'; // Si la API a veces usa 'Working'
+                statusToKeyMap['Subido a Copia'] = 'subido-copia'; // Si la API a veces usa 'Subido a Copia'
+
+
+                const priorityOrder = { 'urgente': 0, 'alto': 1, 'medio': 2, 'bajo': 3 };
+
+                // Limpiar contenedores y preparar contadores
+                const counts = { 'pending': 0, 'en-qa': 0, 'subido-copia': 0, 'cambios-subidos': 0 };
+                Object.keys(kpiStatuses).forEach(key => {
+                    const container = document.getElementById(`kpi-list-${key}`);
+                    if (container) container.innerHTML = `<p class="text-xs text-gray-500 text-center">Sin tareas</p>`;
+                });
+
+                // Ordenar todas las tareas entrantes por prioridad (normalizando inglés/español)
+                tasksToDisplay.sort((a, b) => {
+                    const pa = normalizePriority(a.prioridad || a.priority);
+                    const pb = normalizePriority(b.prioridad || b.priority);
+                    return (priorityOrder[pa] ?? 99) - (priorityOrder[pb] ?? 99);
+                });
+
+                // Distribuir tareas
+                tasksToDisplay.forEach(task => {
+                    const statusKey = statusToKeyMap[task.estado]; // Encontrar la clave del contenedor
+
+                    if (!statusKey) {
+                        // console.warn(`Estado no mapeado para KPI: ${task.estado} en tarea ${task.identificador}`);
+                        return; // Saltar si el estado no corresponde a un KPI visible
+                    }
+                    const container = document.getElementById(`kpi-list-${statusKey}`);
+                    if (!container) {
+                        console.error(`Contenedor KPI no encontrado: kpi-list-${statusKey}`);
+                        return;
+                    }
+
+                    // Limpiar "Sin tareas" si es la primera
+                    if (container.querySelector('p.text-gray-500')) {
+                        container.innerHTML = '';
+                    }
+
+                    const taskId = task.identificador || task.name || 'N/A';
+                    const rawPriority = task.prioridad || task.priority || 'medio';
+                    const priorityKey = normalizePriority(rawPriority);
+                    const complexity = task.complejidad || 'N/A';
+                    const priorityStyle = priorityStyles[priorityKey] || priorityStyles.default;
+                    const displayPriority = priorityDisplayMap[priorityKey] || (rawPriority.charAt(0).toUpperCase() + rawPriority.slice(1));
+
+                    // crear un id seguro para el input/label
+                    const taskElement = `
+                     <div class="clickable-task flex flex-col text-sm bg-gray-900/50 p-2 rounded-md border-l-4 ${priorityStyle.border} cursor-pointer" data-task-id="${taskId}" role="button" tabindex="0">
+                        <div class="flex items-center justify-between w-full">
+                            <span class="text-gray-300 font-medium truncate">${taskId}</span>
+                        </div>
+                        <div class="mt-1 flex justify-between items-center">
+                            <span class="text-xs ${priorityStyle.text} capitalize font-semibold">${displayPriority}</span>
+                            <span class="text-xs text-gray-400">Comp: ${complexity}</span>
+                        </div>
+                    </div>`;
+                    container.innerHTML += taskElement;
+                    // Incrementar contador para ese KPI
+                    if (counts[statusKey] !== undefined) counts[statusKey]++;
+                });
+                // Actualizar visualmente los contadores a la derecha de cada KPI (solo si > 0)
+                const mapKeyToSpanId = {
+                    'pending': 'kpi-count-pending',
+                    'en-qa': 'kpi-count-en-qa',
+                    'subido-copia': 'kpi-count-subido-copia',
+                    'cambios-subidos': 'kpi-count-cambios-subidos'
+                };
+                Object.keys(mapKeyToSpanId).forEach(k => {
+                    const el = document.getElementById(mapKeyToSpanId[k]);
+                    if (!el) return;
+                    el.textContent = counts[k] > 0 ? String(counts[k]) : '';
+                });
+                // Añadir listeners a cada tarjeta para abrir la tarea en una nueva pestaña
+                document.querySelectorAll('.clickable-task').forEach(el => {
+                    el.addEventListener('click', (e) => {
+                        const id = el.getAttribute('data-task-id');
+                        if (!id) return;
+                        const url = `https://erp.overskull.com/app/task/${encodeURIComponent(id)}`;
+                        window.open(url, '_blank');
+                    });
+                    // accesibilidad: abrir con Enter o Space
+                    el.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            el.click();
+                        }
+                    });
+                });
+
+                lucide.createIcons();
+            }
+
+
+            // Acepta datos de complejidad (apiComplexityData) o usa mockData (si es null)
+            function updateQaPerformanceChart(apiComplexityData) {
+                let complexitySums = [];
+                let currentQaNames = qaDisplayNames;
+
+                if (apiComplexityData && apiComplexityData.length > 0) {
+                    console.log("Usando datos de complejidad de la API para el gráfico:", apiComplexityData);
+                    const apiComplexityMap = new Map();
+                    apiComplexityData.forEach(item => {
+                        const apiIdentifier = item.owner || item.modified_by || item.asignado_qa;
+                        const displayName = formatApiName(apiIdentifier);
+                        if (displayName !== 'Desconocido' && qaDisplayNames.includes(displayName)) {
+                            // Asegurar que el valor sea numérico (la API puede devolver strings)
+                            const rawVal = item.suma_complejidad ?? item.total_complejidad_hoy ?? 0;
+                            const complexityValue = Number(rawVal) || 0;
+                            apiComplexityMap.set(displayName, complexityValue);
+                        } else {
+                            console.warn("Identificador de QA no reconocido o no está en qaDisplayNames:", apiIdentifier, displayName);
+                        }
+                    });
+                    complexitySums = qaDisplayNames.map(name => apiComplexityMap.get(name) || 0);
+                    // Mostrar canvas y ocultar placeholder
+                    const noDataEl = document.getElementById('qa-no-data');
+                    const canvasEl = document.getElementById('qaPerformanceChart');
+                    if (noDataEl) noDataEl.classList.add('hidden');
+                    if (canvasEl) canvasEl.style.display = '';
+
+                } else {
+                    // Si la API no devolvió datos explícitos para 'suma_complejidad_hoy', no mostrar barras.
+                    console.log("No hay datos de suma_complejidad_hoy desde la API — no se mostrará el gráfico.");
+                    complexitySums = null; // indicador de que no hay datos
+                    // Mostrar placeholder y ocultar canvas
+                    const noDataEl = document.getElementById('qa-no-data');
+                    const canvasEl = document.getElementById('qaPerformanceChart');
+                    if (noDataEl) noDataEl.classList.remove('hidden');
+                    if (canvasEl) canvasEl.style.display = 'none';
+                }
+                console.log("Datos para el gráfico:", currentQaNames, complexitySums);
+
+                // Si no hay datos (null), destruir gráfico previo y salir
+                if (!Array.isArray(complexitySums)) {
+                    if (qaPerformanceChartInstance) {
+                        try { qaPerformanceChartInstance.destroy(); } catch (e) { /* ignore */ }
+                        qaPerformanceChartInstance = null;
+                    }
+                    return;
+                }
+
+                const maxComplexity = Math.max(...complexitySums, 25);
+
+                const ctx = document.getElementById('qaPerformanceChart').getContext('2d');
+                if (qaPerformanceChartInstance) qaPerformanceChartInstance.destroy();
+                qaPerformanceChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: currentQaNames,
+                        datasets: [{
+                            label: 'Suma de Complejidad',
+                            data: complexitySums,
+                            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: maxComplexity,
+                                ticks: { color: '#9ca3af', stepSize: 1 }
+                            },
+                            x: { ticks: { color: '#9ca3af' } }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            annotation: {
+                                annotations: {
+                                    line1: {
+                                        type: 'line', yMin: 15, yMax: 15, borderColor: 'rgb(239, 68, 68, 0.7)', borderWidth: 2,
+                                        label: { content: 'Meta', enabled: true, position: 'end', backgroundColor: 'rgba(239, 68, 68, 0.7)' }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // No se usan modales para ver tareas; las tareas se abren en una nueva pestaña.
+
+            // Actualiza la vista Kanban (usa mockData)
+            function updateIncidentTrackingView(tasks) {
+                const columnsContainer = document.getElementById('kanban-board');
+                columnsContainer.innerHTML = '';
+
+                const statuses = [
+                    'Abrir/Abierto', 'Trabajando', 'Pendiente de revisar', 'En QA',
+                    'Aprobado para Subir', 'Pendiente de Pull', 'Subido a copia', 'Cambios Subidos'
+                ];
+                const statusGroupMap = {
+                    'To Do': 'Abrir/Abierto',
+                    'Abrir/Abierto': 'Abrir/Abierto',
+                    'Trabajando': 'Trabajando',
+                    'Pending Review': 'Pendiente de revisar',
+                    'Pendiente de revisar': 'Pendiente de revisar',
+                    'Working': 'En QA',
+                    'En QA': 'En QA',
+                    'Aprobado para Subir': 'Aprobado para Subir',
+                    'Pendiente de Pull': 'Pendiente de Pull',
+                    'Subido a Copia': 'Subido a copia',
+                    'Subido a copia': 'Subido a copia',
+                    'Cambios Subidos': 'Cambios Subidos'
+                };
+
+
+                const priorityOrder = { 'urgente': 0, 'alto': 1, 'medio': 2, 'bajo': 3 };
+
+                statuses.forEach(status => {
+                    const columnDiv = document.createElement('div');
+                    columnDiv.className = 'kanban-column card p-4 flex flex-col flex-shrink-0';
+
+                    const filteredTasks = tasks.filter(task => statusGroupMap[task.estado] === status)
+                        .sort((a, b) => {
+                            const pa = normalizePriority(a.prioridad || a.priority);
+                            const pb = normalizePriority(b.prioridad || b.priority);
+                            return (priorityOrder[pa] ?? 99) - (priorityOrder[pb] ?? 99);
+                        });
+
+                    let tasksHtml = '';
+                    if (filteredTasks.length > 0) {
+                        filteredTasks.forEach(task => {
+                            const rawPriority = task.prioridad || task.priority || 'medio';
+                            const pKey = normalizePriority(rawPriority);
+                            const priorityStyle = priorityStyles[pKey] || priorityStyles.default;
+                            const displayPriority = priorityDisplayMap[pKey] || (String(rawPriority).charAt(0).toUpperCase() + String(rawPriority).slice(1));
+                            // Match Dashboard: gentle bg tint + left border color per priority
+                            const bgClass = priorityStyle.bg || 'bg-gray-900/50';
+                            const textClassMain = pKey === 'urgente' ? 'text-white' : 'text-gray-200';
+                            const taskIdentifier = task.identificador || task.id || task.name || '';
+                            tasksHtml += `
+                             <div class="clickable-task ${bgClass} p-3 rounded-md border-l-4 ${priorityStyle.border} cursor-pointer" data-task-id="${taskIdentifier}" role="button" tabindex="0">
+                                 <p class="font-semibold ${textClassMain} text-sm truncate" title="${task.asunto}">${task.asunto}</p>
+                                 <p class="text-xs text-gray-400 mt-1">${taskIdentifier}</p>
+                                 <div class="mt-2 flex justify-between items-center text-xs">
+                                     <span class="flex items-center text-gray-400">
+                                         <i data-lucide="user-circle-2" class="w-3 h-3 mr-1"></i> ${task.asignado_qa}
+                                     </span>
+                                      <span class="${priorityStyle.text} capitalize font-medium">${displayPriority}</span>
+                                      <span class="text-gray-400">Comp: ${task.complejidad}</span>
+                                 </div>
+                             </div>
+                         `;
+                        });
+                    } else {
+                        tasksHtml = '<p class="text-sm text-gray-500 text-center py-4">Sin tareas</p>';
+                    }
+
+                    columnDiv.innerHTML = `
+                     <h3 class="font-semibold text-white mb-3 text-center flex-shrink-0">${status}</h3>
+                     <div class="kanban-tasks space-y-3 overflow-y-auto pr-1"> 
+                         ${tasksHtml}
+                     </div>
+                 `;
+                        columnsContainer.appendChild(columnDiv);
+                    });
+                    lucide.createIcons();
+
+                    // Attach handlers so clicking a Kanban card opens the ERP task in a new tab
+                    document.querySelectorAll('#kanban-board .clickable-task').forEach(el => {
+                        if (el.__erpHandlerAttached) return;
+                        el.__erpHandlerAttached = true;
+                        el.addEventListener('click', () => {
+                            const id = el.getAttribute('data-task-id');
+                            if (!id) return;
+                            const url = `https://erp.overskull.com/app/task/${encodeURIComponent(id)}`;
+                            window.open(url, '_blank');
+                        });
+                        el.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                el.click();
+                            }
+                        });
+                    });
+            }
+
+            let refreshInterval = null;
+
+            function startAutoRefresh(intervalSeconds = 30) {
+                if (refreshInterval) clearInterval(refreshInterval);
+                console.log(`Iniciando actualización automática cada ${intervalSeconds} segundos.`);
+                fetchApiData();
+                updateTimestamp();
+
+                refreshInterval = setInterval(() => {
+                    console.log("Actualizando datos...");
+                    fetchApiData();
+                    updateTimestamp();
+                }, intervalSeconds * 1000);
+            }
+
+            function stopAutoRefresh() {
+                if (refreshInterval) {
+                    console.log("Deteniendo actualización automática.");
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
+            }
+
+            function updateTimestamp() {
+                const now = new Date();
+                const time = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                console.log(`Última actualización: ${time}`);
+            }
+
+            loadInitialData();
+            startAutoRefresh(30);
+
+        });
+    </script>
+
+</body>
+</html>
