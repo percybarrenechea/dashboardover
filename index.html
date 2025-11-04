@@ -123,42 +123,42 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
                         <div class="card p-5 flex flex-col min-h-[180px]">
                             <div class="flex items-center mb-3 flex-shrink-0 justify-between">
-                                    <div class="flex items-center gap-3">
-                                        <i data-lucide="loader-2" class="w-5 h-5 text-yellow-400 mr-2"></i>
-                                        <h3 class="font-semibold text-white">Pend. Revisión</h3>
-                                    </div>
-                                    <span id="kpi-count-pending" class="text-sm text-gray-400"></span>
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="loader-2" class="w-5 h-5 text-yellow-400 mr-2"></i>
+                                    <h3 class="font-semibold text-white">Pend. Revisión</h3>
                                 </div>
+                                <span id="kpi-count-pending" class="text-sm text-gray-400"></span>
+                            </div>
                             <div id="kpi-list-pending" class="space-y-2 overflow-y-auto"></div>
                         </div>
                         <div class="card p-5 flex flex-col min-h-[180px]">
                             <div class="flex items-center mb-3 flex-shrink-0 justify-between">
-                                    <div class="flex items-center gap-3">
-                                        <i data-lucide="beaker" class="w-5 h-5 text-blue-400 mr-2"></i>
-                                        <h3 class="font-semibold text-white">En QA</h3>
-                                    </div>
-                                    <span id="kpi-count-en-qa" class="text-sm text-gray-400"></span>
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="beaker" class="w-5 h-5 text-blue-400 mr-2"></i>
+                                    <h3 class="font-semibold text-white">En QA</h3>
                                 </div>
+                                <span id="kpi-count-en-qa" class="text-sm text-gray-400"></span>
+                            </div>
                             <div id="kpi-list-en-qa" class="space-y-2 overflow-y-auto"></div>
                         </div>
                         <div class="card p-5 flex flex-col min-h-[180px]">
                             <div class="flex items-center mb-3 flex-shrink-0 justify-between">
-                                    <div class="flex items-center gap-3">
-                                        <i data-lucide="copy-check" class="w-5 h-5 text-purple-400 mr-2"></i>
-                                        <h3 class="font-semibold text-white">Subido a Copia</h3>
-                                    </div>
-                                    <span id="kpi-count-subido-copia" class="text-sm text-gray-400"></span>
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="copy-check" class="w-5 h-5 text-purple-400 mr-2"></i>
+                                    <h3 class="font-semibold text-white">Subido a Copia</h3>
                                 </div>
+                                <span id="kpi-count-subido-copia" class="text-sm text-gray-400"></span>
+                            </div>
                             <div id="kpi-list-subido-copia" class="space-y-2 overflow-y-auto"></div>
                         </div>
                         <div class="card p-5 flex flex-col min-h-[180px]">
                             <div class="flex items-center mb-3 flex-shrink-0 justify-between">
-                                    <div class="flex items-center gap-3">
-                                        <i data-lucide="cloud-cog" class="w-5 h-5 text-teal-400 mr-2"></i>
-                                        <h3 class="font-semibold text-white">Cambios Subidos</h3>
-                                    </div>
-                                    <span id="kpi-count-cambios-subidos" class="text-sm text-gray-400"></span>
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="cloud-cog" class="w-5 h-5 text-teal-400 mr-2"></i>
+                                    <h3 class="font-semibold text-white">Cambios Subidos</h3>
                                 </div>
+                                <span id="kpi-count-cambios-subidos" class="text-sm text-gray-400"></span>
+                            </div>
                             <div id="kpi-list-cambios-subidos" class="space-y-2 overflow-y-auto"></div>
                         </div>
                     </div>
@@ -205,7 +205,8 @@
                                 </h3>
                                 <div class="mt-2">
                                     <p class="text-sm text-gray-400">Seleccione un miembro del equipo para la tarea
-                                        <strong id="modal-task-id" class="text-white"></strong>.</p>
+                                        <strong id="modal-task-id" class="text-white"></strong>.
+                                    </p>
                                     <select id="qa-selector"
                                         class="mt-4 w-full bg-gray-900 border border-gray-600 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"></select>
                                 </div>
@@ -775,28 +776,39 @@
                         }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                max: maxComplexity,
-                                ticks: { color: '#9ca3af', stepSize: 1 }
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: maxComplexity,
+                                    ticks: { color: '#9ca3af', stepSize: 1 },
+                                    grid: {
+                                        // Cambié el color de las líneas de la cuadrícula para que no sean blancas
+                                        color: '#374151',
+                                        borderColor: '#374151'
+                                    }
+                                },
+                                x: {
+                                    ticks: { color: '#9ca3af' },
+                                    grid: {
+                                        color: '#374151',
+                                        borderColor: '#374151'
+                                    }
+                                }
                             },
-                            x: { ticks: { color: '#9ca3af' } }
-                        },
-                        plugins: {
-                            legend: { display: false },
-                            annotation: {
-                                annotations: {
-                                    line1: {
-                                        type: 'line', yMin: 15, yMax: 15, borderColor: 'rgb(239, 68, 68, 0.7)', borderWidth: 2,
-                                        label: { content: 'Meta', enabled: true, position: 'end', backgroundColor: 'rgba(239, 68, 68, 0.7)' }
+                            plugins: {
+                                legend: { display: false },
+                                annotation: {
+                                    annotations: {
+                                        line1: {
+                                            type: 'line', yMin: 15, yMax: 15, borderColor: 'rgb(239, 68, 68, 0.7)', borderWidth: 2,
+                                            label: { content: 'Meta', enabled: true, position: 'end', backgroundColor: 'rgba(239, 68, 68, 0.7)' }
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
                 });
             }
 
@@ -875,27 +887,27 @@
                          ${tasksHtml}
                      </div>
                  `;
-                        columnsContainer.appendChild(columnDiv);
-                    });
-                    lucide.createIcons();
+                    columnsContainer.appendChild(columnDiv);
+                });
+                lucide.createIcons();
 
-                    // Attach handlers so clicking a Kanban card opens the ERP task in a new tab
-                    document.querySelectorAll('#kanban-board .clickable-task').forEach(el => {
-                        if (el.__erpHandlerAttached) return;
-                        el.__erpHandlerAttached = true;
-                        el.addEventListener('click', () => {
-                            const id = el.getAttribute('data-task-id');
-                            if (!id) return;
-                            const url = `https://erp.overskull.com/app/task/${encodeURIComponent(id)}`;
-                            window.open(url, '_blank');
-                        });
-                        el.addEventListener('keydown', (e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                el.click();
-                            }
-                        });
+                // Attach handlers so clicking a Kanban card opens the ERP task in a new tab
+                document.querySelectorAll('#kanban-board .clickable-task').forEach(el => {
+                    if (el.__erpHandlerAttached) return;
+                    el.__erpHandlerAttached = true;
+                    el.addEventListener('click', () => {
+                        const id = el.getAttribute('data-task-id');
+                        if (!id) return;
+                        const url = `https://erp.overskull.com/app/task/${encodeURIComponent(id)}`;
+                        window.open(url, '_blank');
                     });
+                    el.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            el.click();
+                        }
+                    });
+                });
             }
 
             let refreshInterval = null;
@@ -934,4 +946,5 @@
     </script>
 
 </body>
+
 </html>
