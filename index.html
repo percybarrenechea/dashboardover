@@ -77,6 +77,18 @@
             color: #ffffff;
         }
 
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .status-icon-warning {
+            background-color: #facc15; /* yellow-400 */
+        }
+        .status-icon-overdue {
+            background-color: #f87171; /* red-400 */
+        }
+
         /* Estilos para Kanban */
         .kanban-column {
             min-width: 300px;
@@ -127,7 +139,10 @@
                                     <i data-lucide="loader-2" class="w-5 h-5 text-yellow-400 mr-2"></i>
                                     <h3 class="font-semibold text-white">Pend. Revisión</h3>
                                 </div>
-                                <span id="kpi-count-pending" class="text-sm text-gray-400"></span>
+                                <span class="flex items-center gap-2">
+                                    <span id="kpi-count-pending" class="text-sm text-gray-400"></span>
+                                    <span id="kpi-danger-pending" class="inline-block"></span>
+                                </span>
                             </div>
                             <div id="kpi-list-pending" class="space-y-2 overflow-y-auto"></div>
                         </div>
@@ -137,7 +152,10 @@
                                     <i data-lucide="beaker" class="w-5 h-5 text-blue-400 mr-2"></i>
                                     <h3 class="font-semibold text-white">En QA</h3>
                                 </div>
-                                <span id="kpi-count-en-qa" class="text-sm text-gray-400"></span>
+                                <span class="flex items-center gap-2">
+                                    <span id="kpi-count-en-qa" class="text-sm text-gray-400"></span>
+                                    <span id="kpi-danger-en-qa" class="inline-block"></span>
+                                </span>
                             </div>
                             <div id="kpi-list-en-qa" class="space-y-2 overflow-y-auto"></div>
                         </div>
@@ -147,7 +165,10 @@
                                     <i data-lucide="copy-check" class="w-5 h-5 text-purple-400 mr-2"></i>
                                     <h3 class="font-semibold text-white">Subido a Copia</h3>
                                 </div>
-                                <span id="kpi-count-subido-copia" class="text-sm text-gray-400"></span>
+                                <span class="flex items-center gap-2">
+                                    <span id="kpi-count-subido-copia" class="text-sm text-gray-400"></span>
+                                    <span id="kpi-danger-subido-copia" class="inline-block"></span>
+                                </span>
                             </div>
                             <div id="kpi-list-subido-copia" class="space-y-2 overflow-y-auto"></div>
                         </div>
@@ -157,7 +178,10 @@
                                     <i data-lucide="cloud-cog" class="w-5 h-5 text-teal-400 mr-2"></i>
                                     <h3 class="font-semibold text-white">Cambios Subidos</h3>
                                 </div>
-                                <span id="kpi-count-cambios-subidos" class="text-sm text-gray-400"></span>
+                                <span class="flex items-center gap-2">
+                                    <span id="kpi-count-cambios-subidos" class="text-sm text-gray-400"></span>
+                                    <span id="kpi-danger-cambios-subidos" class="inline-block"></span>
+                                </span>
                             </div>
                             <div id="kpi-list-cambios-subidos" class="space-y-2 overflow-y-auto"></div>
                         </div>
@@ -246,14 +270,14 @@
                 return lowerApiIdentifier.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
             };
             const apiNameMap = new Map([
-                ['Astrid', 'astridna@overskull.pe'],
+                ['Astrid', 'sebastian@overskull.pe'],
                 ['Adrian', 'adriansaavedra@larael.com'],
                 ['Percy', 'percybarrenechea@larael.com'],
                 ['Diana', 'dianaquispe@larael.com'],
                 ['Leonardo', 'leonardosalazar@larael.com'],
-                ['Witerman', 'witermanbravo@larael.com'],
+                ['Witerman', 'sebastian@overskull.pe'],
                 ['Marilyn', 'marilynmq@overskull.pe'],
-                ['Yesenia', 'yeseniaraqui@overskull.com']
+                ['Yesenia', 'sebastian@overskull.pe']
             ]);
 
             const statusColors = {
@@ -305,6 +329,28 @@
                 if (['medium', 'medio'].includes(s)) return 'medio';
                 if (['low', 'bajo'].includes(s)) return 'bajo';
                 return 'medio';
+            }
+
+            // Helper: return true if expDate (YYYY-MM-DD or Date-string) is before today (overdue)
+            function isOverdue(expDate) {
+                if (!expDate) return false;
+                // Accept formats like '2025-11-11' or full ISO
+                const s = String(expDate).trim();
+                let d = null;
+                // Try YYYY-MM-DD
+                const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                if (m) {
+                    d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+                } else {
+                    const parsed = new Date(s);
+                    if (!isNaN(parsed)) d = parsed;
+                }
+                if (!d || isNaN(d.getTime())) return false;
+                // Compare dates only (no time)
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                d.setHours(0, 0, 0, 0);
+                return d < today;
             }
 
             // mockData se usa como fallback y para la vista Kanban
@@ -406,6 +452,42 @@
                 updateIncidentTrackingView(allTasks);
             });
 
+            const complexityTimeLimits = {
+                '1': 1800,      // 30m
+                '2': 5400,      // 1h 30m
+                '3': 10800,     // 3h
+                '4': 18000,     // 5h
+                '5': Infinity
+            };
+
+            function updateTaskAlerts() {
+                if (activeApiTasks.length === 0) return;
+
+                activeApiTasks.forEach(task => {
+                    const alertElement = document.getElementById(`alert-${task.identificador}`);
+                    if (!alertElement || !task.hora_de_inicio) {
+                        if(alertElement) alertElement.innerHTML = ''; // Clear if no start time
+                        return;
+                    }
+
+                    const startTime = new Date(task.hora_de_inicio);
+                    if (isNaN(startTime.getTime())) { // Invalid date
+                        alertElement.innerHTML = '';
+                        return;
+                    }
+
+                    const elapsedSeconds = (new Date() - startTime) / 1000;
+                    const originalComplexity = parseInt(task.complejidad, 10);
+                    const timeLimit = complexityTimeLimits[originalComplexity];
+
+                    if (timeLimit && elapsedSeconds > timeLimit) {
+                        alertElement.innerHTML = '🚨';
+                    } else {
+                        alertElement.innerHTML = '';
+                    }
+                });
+            }
+
             function fetchApiData() {
                 const apiUrl = 'https://qawebservices.shalomcontrol.com/cloud/reportes/erp-overskull/percy';
                 const errorContainer = document.getElementById('active-tasks-error');
@@ -428,11 +510,15 @@
                                     asunto: item.asunto || 'Sin asunto',
                                     asignado_qa: formatApiName(item.asignado_qa),
                                     complejidad: item.complejidad || 'N/A',
-                                    estado: item.estado || 'Desconocido'
+                                    estado: item.estado || 'Desconocido',
+                                    identificador: item.name || item.identificador || item.id || '',
+                                    exp_end_date: item.exp_end_date || item.expEnd || item.due_date || item.expiration || item.fecha_limite || null,
+                                    hora_de_inicio: item.hora_de_inicio
                                 }));
                                 updateEnQAPanel(activeApiTasks);
                             } else {
                                 console.warn("No se encontró 'data' o no es un array para Seguimiento Activo.");
+                                activeApiTasks = [];
                                 updateEnQAPanel([]);
                             }
 
@@ -450,7 +536,10 @@
                                                 estado: item.status || status,
                                                 prioridad: item.priority ? item.priority.toLowerCase() : 'medio',
                                                 complejidad: item.complejidad || 'N/A',
-                                                asignado_qa: formatApiName(item.asignado_qa)
+                                                asignado_qa: formatApiName(item.asignado_qa),
+                                                // Incluir fecha de entrega si la API la proporciona (varios alias)
+                                                exp_end_date: item.exp_end_date || item.expEnd || item.due_date || item.expiration || item.fecha_limite || null,
+                                                hora_de_inicio: item.hora_de_inicio || null
                                             });
                                         });
                                     }
@@ -567,6 +656,10 @@
                 updateIncidentTrackingView(tasks);
                 updateTimestamp();
                 lucide.createIcons();
+
+                // ensure lucide renders any newly added icons inside cards
+                // (some cards are created dynamically, so re-create icons here)
+                lucide.createIcons();
             }
 
             // Muestra los datos (reales o de error) en el panel izquierdo
@@ -587,18 +680,49 @@
                     activeTasksData.forEach(task => {
                         const complejidad = task.complejidad !== undefined && task.complejidad !== null ? task.complejidad : 'N/A';
                         const asignado = task.asignado_qa || 'No asignado';
+                        // detectar si la tarea tiene fecha de entrega y si está atrasada
+                        const expDateRaw = task.exp_end_date || task.expEnd || task.due_date || task.expiration || task.fecha_limite || null;
+                        const overdue = isOverdue(expDateRaw);
+                        // formatear fecha para mostrar en tooltip si es válida
+                        let formattedDue = '';
+                        if (expDateRaw) {
+                            const parsed = new Date(expDateRaw);
+                            if (!isNaN(parsed.getTime())) {
+                                formattedDue = parsed.toLocaleDateString('es-ES');
+                            } else {
+                                formattedDue = String(expDateRaw);
+                            }
+                        }
+                        const overdueBadge = overdue ? `<i data-lucide="calendar-clock" class="w-5 h-5 text-yellow-400" title="Fecha de entrega vencida: ${formattedDue}"></i>` : '';
 
                         const cardHtml = `
-                        <div class="p-4 rounded-lg bg-gray-700/50 border border-gray-600 hover:bg-gray-700 transition-colors">
+                        <div class="relative p-4 rounded-lg bg-gray-700/50 border border-gray-600 hover:bg-gray-700 transition-colors cursor-pointer clickable-qa-task" data-task-id="${task.identificador}">
+                            <div class="absolute top-2 right-2 flex items-center gap-2">
+                                <span id="alert-${task.identificador}"></span>
+                                ${overdueBadge}
+                            </div>
                             <p class="font-semibold text-white truncate" title="${task.asunto}">${task.asunto}</p>
                             <div class="flex justify-between items-center mt-3 text-sm text-gray-400">
                                 <span class="flex items-center gap-2"><i data-lucide="user-circle-2" class="w-4 h-4"></i>${asignado}</span>
-                                <span class="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded-full text-xs font-medium">Complejidad: ${complejidad}</span>
+                                <div class="flex items-center gap-3">
+                                    <span class="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded-full text-xs font-medium">Complejidad: ${complejidad}</span>
+                                </div>
                             </div>
                         </div>`;
                         listContainer.innerHTML += cardHtml;
                     });
                 }
+
+                document.querySelectorAll('.clickable-qa-task').forEach(el => {
+                    el.addEventListener('click', () => {
+                        const taskId = el.getAttribute('data-task-id');
+                        if (taskId) {
+                            const url = `https://erp.overskull.com/app/qa/${encodeURIComponent(taskId)}`;
+                            window.open(url, '_blank');
+                        }
+                    });
+                });
+
                 lucide.createIcons();
             }
 
@@ -625,13 +749,36 @@
 
                 // Limpiar contenedores y preparar contadores
                 const counts = { 'pending': 0, 'en-qa': 0, 'subido-copia': 0, 'cambios-subidos': 0 };
+                const overdueCounts = { 'pending': 0, 'en-qa': 0, 'subido-copia': 0, 'cambios-subidos': 0 };
                 Object.keys(kpiStatuses).forEach(key => {
                     const container = document.getElementById(`kpi-list-${key}`);
                     if (container) container.innerHTML = `<p class="text-xs text-gray-500 text-center">Sin tareas</p>`;
                 });
 
-                // Ordenar todas las tareas entrantes por prioridad (normalizando inglés/español)
+                // Ordenar todas las tareas entrantes por fecha de entrega
                 tasksToDisplay.sort((a, b) => {
+                    const dateA = a.exp_end_date || a.expEnd || a.due_date || a.expiration || a.fecha_limite;
+                    const dateB = b.exp_end_date || b.expEnd || b.due_date || b.expiration || b.fecha_limite;
+
+                    if (dateA && dateB) {
+                        const dA = new Date(dateA);
+                        const dB = new Date(dateB);
+                        if (dA.getTime() === dB.getTime()) {
+                            // Si las fechas son iguales, ordenar por prioridad
+                            const pa = normalizePriority(a.prioridad || a.priority);
+                            const pb = normalizePriority(b.prioridad || b.priority);
+                            return (priorityOrder[pa] ?? 99) - (priorityOrder[pb] ?? 99);
+                        }
+                        return dA - dB;
+                    }
+                    if (dateA) {
+                        return -1; // a tiene fecha, b no, a va primero
+                    }
+                    if (dateB) {
+                        return 1; // b tiene fecha, a no, b va primero
+                    }
+                    
+                    // Si ninguna tiene fecha, ordenar por prioridad como fallback
                     const pa = normalizePriority(a.prioridad || a.priority);
                     const pb = normalizePriority(b.prioridad || b.priority);
                     return (priorityOrder[pa] ?? 99) - (priorityOrder[pb] ?? 99);
@@ -662,13 +809,21 @@
                     const complexity = task.complejidad || 'N/A';
                     const priorityStyle = priorityStyles[priorityKey] || priorityStyles.default;
                     const displayPriority = priorityDisplayMap[priorityKey] || (rawPriority.charAt(0).toUpperCase() + rawPriority.slice(1));
+                    // detectar si la tarea tiene fecha de entrega y si está atrasada
+                    const expDateRaw = task.exp_end_date || task.expEnd || task.due_date || task.expiration || task.fecha_limite || null;
+                    const overdue = isOverdue(expDateRaw);
 
                     // crear un id seguro para el input/label
+                    const overdueBadge = overdue ? `<div class="absolute top-2 right-2"><i data-lucide="alert-triangle" class="w-4 h-4 text-red-400"></i></div>` : '';
+                    const startDate = task.hora_de_inicio ? task.hora_de_inicio.split(' ')[0] : '';
+                    const dateElement = startDate ? `<div class="text-xs text-gray-500 mt-1">${startDate}</div>` : '';
                     const taskElement = `
-                     <div class="clickable-task flex flex-col text-sm bg-gray-900/50 p-2 rounded-md border-l-4 ${priorityStyle.border} cursor-pointer" data-task-id="${taskId}" role="button" tabindex="0">
+                     <div class="clickable-task relative flex flex-col text-sm bg-gray-900/50 p-2 rounded-md border-l-4 ${priorityStyle.border} cursor-pointer" data-task-id="${taskId}" role="button" tabindex="0">
+                        ${overdueBadge}
                         <div class="flex items-center justify-between w-full">
                             <span class="text-gray-300 font-medium truncate">${taskId}</span>
                         </div>
+                        ${dateElement}
                         <div class="mt-1 flex justify-between items-center">
                             <span class="text-xs ${priorityStyle.text} capitalize font-semibold">${displayPriority}</span>
                             <span class="text-xs text-gray-400">Comp: ${complexity}</span>
@@ -677,6 +832,8 @@
                     container.innerHTML += taskElement;
                     // Incrementar contador para ese KPI
                     if (counts[statusKey] !== undefined) counts[statusKey]++;
+                    // Incrementar contador de atrasadas si aplica
+                    if (overdue && overdueCounts[statusKey] !== undefined) overdueCounts[statusKey]++;
                 });
                 // Actualizar visualmente los contadores a la derecha de cada KPI (solo si > 0)
                 const mapKeyToSpanId = {
@@ -689,6 +846,22 @@
                     const el = document.getElementById(mapKeyToSpanId[k]);
                     if (!el) return;
                     el.textContent = counts[k] > 0 ? String(counts[k]) : '';
+                });
+                // Mostrar icono de danger si hay tareas atrasadas en cada KPI
+                const mapKeyToDangerId = {
+                    'pending': 'kpi-danger-pending',
+                    'en-qa': 'kpi-danger-en-qa',
+                    'subido-copia': 'kpi-danger-subido-copia',
+                    'cambios-subidos': 'kpi-danger-cambios-subidos'
+                };
+                Object.keys(mapKeyToDangerId).forEach(k => {
+                    const el = document.getElementById(mapKeyToDangerId[k]);
+                    if (!el) return;
+                    if ((overdueCounts[k] || 0) > 0) {
+                        el.innerHTML = `<i data-lucide="alert-triangle" class="w-4 h-4 text-red-400" title="Tareas atrasadas: ${overdueCounts[k]}"></i>`;
+                    } else {
+                        el.innerHTML = '';
+                    }
                 });
                 // Añadir listeners a cada tarjeta para abrir la tarea en una nueva pestaña
                 document.querySelectorAll('.clickable-task').forEach(el => {
@@ -776,39 +949,28 @@
                         }]
                     },
                     options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    max: maxComplexity,
-                                    ticks: { color: '#9ca3af', stepSize: 1 },
-                                    grid: {
-                                        // Cambié el color de las líneas de la cuadrícula para que no sean blancas
-                                        color: '#374151',
-                                        borderColor: '#374151'
-                                    }
-                                },
-                                x: {
-                                    ticks: { color: '#9ca3af' },
-                                    grid: {
-                                        color: '#374151',
-                                        borderColor: '#374151'
-                                    }
-                                }
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: maxComplexity,
+                                ticks: { color: '#9ca3af', stepSize: 1 }
                             },
-                            plugins: {
-                                legend: { display: false },
-                                annotation: {
-                                    annotations: {
-                                        line1: {
-                                            type: 'line', yMin: 15, yMax: 15, borderColor: 'rgb(239, 68, 68, 0.7)', borderWidth: 2,
-                                            label: { content: 'Meta', enabled: true, position: 'end', backgroundColor: 'rgba(239, 68, 68, 0.7)' }
-                                        }
+                            x: { ticks: { color: '#9ca3af' } }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            annotation: {
+                                annotations: {
+                                    line1: {
+                                        type: 'line', yMin: 15, yMax: 15, borderColor: 'rgb(239, 68, 68, 0.7)', borderWidth: 2,
+                                        label: { content: 'Meta', enabled: true, position: 'end', backgroundColor: 'rgba(239, 68, 68, 0.7)' }
                                     }
                                 }
                             }
                         }
+                    }
                 });
             }
 
@@ -863,8 +1025,23 @@
                             const bgClass = priorityStyle.bg || 'bg-gray-900/50';
                             const textClassMain = pKey === 'urgente' ? 'text-white' : 'text-gray-200';
                             const taskIdentifier = task.identificador || task.id || task.name || '';
+                            // Check overdue using possible fields
+                            const expDateRaw = task.exp_end_date || task.expEnd || task.due_date || task.expiration || task.fecha_limite || null;
+                            const overdue = isOverdue(expDateRaw);
+                            // format date for tooltip
+                            let formattedDue = '';
+                            if (expDateRaw) {
+                                const parsed = new Date(expDateRaw);
+                                if (!isNaN(parsed.getTime())) {
+                                    formattedDue = parsed.toLocaleDateString('es-ES');
+                                } else {
+                                    formattedDue = String(expDateRaw);
+                                }
+                            }
+                            const overdueBadge = overdue ? `<div class="absolute top-2 right-2" title="Atrasado: ${formattedDue}"><i data-lucide="alert-triangle" class="w-4 h-4 text-red-400"></i></div>` : '';
                             tasksHtml += `
-                             <div class="clickable-task ${bgClass} p-3 rounded-md border-l-4 ${priorityStyle.border} cursor-pointer" data-task-id="${taskIdentifier}" role="button" tabindex="0">
+                             <div class="clickable-task relative ${bgClass} p-3 rounded-md border-l-4 ${priorityStyle.border} cursor-pointer" data-task-id="${taskIdentifier}" role="button" tabindex="0">
+                                 ${overdueBadge}
                                  <p class="font-semibold ${textClassMain} text-sm truncate" title="${task.asunto}">${task.asunto}</p>
                                  <p class="text-xs text-gray-400 mt-1">${taskIdentifier}</p>
                                  <div class="mt-2 flex justify-between items-center text-xs">
@@ -941,6 +1118,7 @@
 
             loadInitialData();
             startAutoRefresh(30);
+            setInterval(updateTaskAlerts, 1000);
 
         });
     </script>
