@@ -256,7 +256,7 @@
             let kpiApiTasks = []; // Para datos reales de los KPIs superiores
             let complexityApiData = []; // Para datos reales del gráfico
             let qaPerformanceChartInstance = null;
-            const qaDisplayNames = ['Astrid', 'Adrian', 'Percy', 'Diana', 'Leonardo', 'Witerman', 'Marilyn', 'Yesenia'];
+            const qaDisplayNames = ['Adrian', 'Percy', 'Diana', 'Leonardo', 'Sebastian', 'Marilyn'];
             // Lista específica para el gráfico de rendimiento: excluir Astrid y Yesenia
             const qaChartNames = qaDisplayNames.filter(n => n !== 'Astrid' && n !== 'Yesenia');
 
@@ -270,14 +270,12 @@
                 return lowerApiIdentifier.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
             };
             const apiNameMap = new Map([
-                ['Astrid', 'sebastian@overskull.pe'],
                 ['Adrian', 'adriansaavedra@larael.com'],
                 ['Percy', 'percybarrenechea@larael.com'],
                 ['Diana', 'dianaquispe@larael.com'],
                 ['Leonardo', 'leonardosalazar@larael.com'],
-                ['Witerman', 'sebastian@overskull.pe'],
-                ['Marilyn', 'marilynmq@overskull.pe'],
-                ['Yesenia', 'sebastian@overskull.pe']
+                ['Sebastian', 'sebastian@overskull.pe'],
+                ['Marilyn', 'marilynmq@overskull.pe']
             ]);
 
             const statusColors = {
